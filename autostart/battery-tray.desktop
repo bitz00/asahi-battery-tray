@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Battery Tray
+Exec=python3 /home/%U/.local/bin/battery-daemon.py
+NoDisplay=true
+X-KDE-autostart-enabled=true
+X-GNOME-Autostart-enabled=true
+StartupNotify=false
+Hidden=true
