@@ -1,138 +1,67 @@
 # asahi-battery-tray
 
-A lightweight system tray application designed for Fedora Asahi Remix running on Apple Silicon hardware. This utility provides direct hardware control over battery charging limits via the `macsmc` driver, replicating the functionality of tools such as AlDente.
+A lightweight system tray application for **Fedora Asahi Remix** on Apple Silicon. Provides hardware-level battery charge limiting via the `macsmc` driver—think AlDente, but native to Linux.
 
-It operates by writing directly to sysfs control nodes, utilizing a state machine to prevent firmware oscillation and ensuring a clean, native integration with the desktop environment.
+Writes directly to sysfs control nodes with a state machine to prevent firmware oscillation. Zero runtime `sudo`, clean Qt/PySide6 UI, and seamless desktop integration.
 
-## Features
+## ✨ Features
 
-- **Hardware-Level Control:** Direct interaction with `charge_control_end_threshold` and `charge_control_start_threshold`.
-- **Native System Tray:** Clean Qt/PySide6 integration for KDE and GNOME desktop environments.
-- **Persistent Configuration:** Settings are saved across reboots.
-- **Oscillation Prevention:** Utilizes a dynamic threshold window to prevent the macSMC driver from rapid-cycling when at the charge limit.
-- **Zero Privilege Escalation:** Uses a one-time udev rule to grant standard user access to battery controls, removing the need for sudo during operation.
-- **Background Service:** Runs as a stable systemd user service with automatic restart on failure.
+- **Hardware Control**: Direct manipulation of `charge_control_end_threshold` and `charge_control_start_threshold`
+- **Native Tray UI**: PySide6/Qt6 system tray icon for KDE and GNOME
+- **Persistent Settings**: Configuration saved across reboots
+- **Oscillation Prevention**: Dynamic threshold window stops rapid charge cycling at limits
+- **No Runtime Sudo**: One-time udev rule grants user access to battery controls
+- **Background Service**: systemd user service with auto-restart on failure
 
-## Requirements
+## 📦 Requirements
 
-- **OS:** Fedora Asahi Remix (Fedora-based Asahi Linux installation).
-- **Hardware:** Apple Silicon Mac (M1/M2/M3) with `macsmc` kernel support.
-- **Python:** 3.10 or higher.
-- **Dependencies:** PySide6 (Qt6 bindings for Python).
+- Fedora Asahi Remix (Apple Silicon M1/M2/M3)
+- Python 3.10+
+- `python3-pyside6`, `qt6-qtbase` (installed automatically)
 
-## Installation
-
-### 1. Install Dependencies
-
-Ensure you have the required Python libraries and Qt components. This script uses `dnf` as it is targeted at Fedora Asahi Remix.
+## 🚀 Installation
 
 ```bash
-sudo dnf install python3-pyside6 qt6-qtbase
+git clone https://github.com/bitz00/asahi-battery-tray.git
+cd asahi-battery-tray
+make install
 ```
 
-### 2. Deploy the Application
+That's it. The Makefile handles dependencies, file deployment, permissions, and service setup.
 
-Place the daemon script in your local user binary directory and ensure it is executable.
+### Useful Commands
 
-```bash
-mkdir -p ~/.local/bin
-# Assuming the file is named battery-daemon.py
-cp battery-daemon.py ~/.local/bin/battery-daemon.py
-chmod +x ~/.local/bin/battery-daemon.py
-```
+| Command | Description |
+|---------|-------------|
+| `make install` | Install everything |
+| `make uninstall` | Remove all installed components |
+| `make status` | Check service and udev rule status |
+| `make clean` | Remove Python cache files |
 
-### 3. Configure Sysfs Permissions
+## ▶️ Usage
 
-By default, the battery control interface is read-only for standard users. Create a udev rule to grant write access.
+- The app starts automatically on login, or run `battery-daemon.py` manually
+- **Left-click** the tray icon to open the UI
+- Adjust the charge limit slider (50–100%)
+- If battery is above your limit, click **Discharge** to drain naturally to the target
 
-Create the file `/etc/udev/rules.d/99-battery-permissions.rules` with the following content:
+## 🏗 Architecture
 
-```udev
-ACTION=="add|change", SUBSYSTEM=="power_supply", KERNEL=="macsmc-battery", RUN+="/bin/chmod a+w /sys/class/power_supply/macsmc-battery/charge_control_end_threshold /sys/class/power_supply/macsmc-battery/charge_control_start_threshold"
-```
+Three states manage safe kernel interaction:
 
-Apply the changes immediately without rebooting:
+1. **Charge**: System charges freely up to your set limit
+2. **Hold**: At limit, sets tight window (`Start=Current`, `End=Current+1`) to maintain charge without engaging battery
+3. **Discharge**: Drains battery until it reaches the limit, then returns to Hold
 
-```bash
-sudo udevadm control --reload-rules
-sudo udevadm trigger --subsystem-match=power_supply
-```
+## 🔧 Troubleshooting
 
-Verify the permissions have been applied:
+| Issue | Solution |
+|-------|----------|
+| Permission denied | Run `make install` again, or verify udev rule: `ls -l /sys/class/power_supply/macsmc-battery/` should show `rw-rw-rw-` |
+| Tray icon missing | Ensure service is running: `make status`. Log out/in or restart the session |
+| Service fails | Check logs: `journalctl --user -u battery-tray.service -e` |
+| Settings not saving | Confirm service is enabled: `systemctl --user is-enabled battery-tray.service` |
 
-```bash
-ls -l /sys/class/power_supply/macsmc-battery/charge_control_end_threshold
-```
+## 📄 License
 
-### 4. Enable Systemd Service
-
-To ensure the application runs in the background and persists across sessions, enable the user service.
-
-Create the file `~/.config/systemd/user/battery-tray.service`:
-
-```ini
-[Unit]
-Description=Asahi Battery Charge Limiter
-After=graphical-session.target
-
-[Service]
-ExecStart=/usr/bin/python3 /home/%U/.local/bin/battery-daemon.py
-Restart=always
-RestartSec=5
-
-[Install]
-WantedBy=default.target
-```
-
-Reload the systemd daemon and start the service:
-
-```bash
-systemctl --user daemon-reload
-systemctl --user enable --now battery-tray.service
-```
-
-### 5. Configure Autostart (Desktop Entry)
-
-For the tray icon to appear reliably upon login in KDE/GNOME, add a desktop entry.
-
-Create the file `~/.config/autostart/battery-tray.desktop`:
-
-```ini
-[Desktop Entry]
-Type=Application
-Name=Battery Tray
-Exec=python3 /home/%U/.local/bin/battery-daemon.py
-NoDisplay=true
-X-KDE-autostart-enabled=true
-X-GNOME-Autostart-enabled=true
-StartupNotify=false
-Hidden=true
-```
-
-## Usage
-
-1.  **Launch:** The application will start automatically on your next login, or you can run `python3 ~/.local/bin/battery-daemon.py` immediately.
-2.  **Open UI:** Left-click the battery icon in the system tray.
-3.  **Set Limit:** Use the slider or input field to select a charge cap between 50% and 100%.
-4.  **Discharge Mode:** If the current battery level is above the set limit, a "Discharge" button will appear. Clicking this allows the system to drain to the limit naturally.
-
-## Architecture
-
-The application manages three distinct states to interact with the kernel safely:
-
-- **Charge:** The system charges freely up to the user-defined limit.
-- **Hold:** Once the limit is reached, the system sets a tight threshold window (`Start=Current`, `End=Current+1`) to maintain the current charge level without engaging the battery.
-- **Discharge:** Allows the battery to drain until it reaches the configured limit, at which point it returns to the Hold state.
-
-## Troubleshooting
-
-| Issue | Resolution |
-| :--- | :--- |
-| **Permission Denied** | Verify the udev rule is applied and permissions are `rw-rw-rw-` using `ls -l /sys/class/power_supply/macsmc-battery/`. |
-| **Tray Icon Missing** | Ensure `X-KDE-autostart-enabled=true` is set and the `.desktop` file is executable. |
-| **Service Fails** | Check logs via `journalctl --user -u battery-tray.service -e` to identify Python tracebacks. |
-| **Settings Lost on Reboot** | Ensure the systemd service is enabled via `systemctl --user enable battery-tray.service`. |
-
-## License
-
-This project is licensed under the MIT License    
+MIT License — see [LICENSE](LICENSE) for details.
