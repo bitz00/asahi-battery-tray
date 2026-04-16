@@ -3,7 +3,7 @@ Description=Asahi Battery Charge Limiter
 After=graphical-session.target
 
 [Service]
-ExecStart=/usr/bin/python3 /home/%U/.local/bin/battery-daemon.py
+ExecStart=%h/.local/bin/battery-daemon.py
 Restart=always
 RestartSec=5
 
