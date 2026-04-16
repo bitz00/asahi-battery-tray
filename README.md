@@ -1,6 +1,6 @@
 # asahi-battery-tray
 
-A lightweight system tray application for **Fedora Asahi Remix** on Apple Silicon. Provides hardware-level battery charge limiting via the `macsmc` driver. Basically AlDente, but native to Linux.
+A lightweight system tray application for **Fedora Asahi Remix** on Apple Silicon. Provides hardware-level battery charge limiting via the `macsmc` driver. Basically AlDente, but native to Linux. Also like 90% vibe coded (including the vibe README).
 
 Writes directly to sysfs control nodes with a state machine to prevent firmware oscillation. Zero runtime `sudo`, clean Qt/PySide6 UI, and seamless desktop integration.
 
