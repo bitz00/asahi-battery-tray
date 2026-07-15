@@ -27,7 +27,7 @@ cd asahi-battery-tray
 make install
 ```
 
-That's it. The Makefile handles dependencies, file deployment, permissions, and service setup.
+The Makefile handles dependencies, file deployment, permissions, and service setup.
 
 ### Useful Commands
 
@@ -42,7 +42,7 @@ That's it. The Makefile handles dependencies, file deployment, permissions, and 
 
 - The app starts automatically on login, or run `battery-daemon.py` manually
 - **Left-click** the tray icon to open the UI
-- Adjust the charge limit slider (50–100%)
+- Adjust the charge limit slider (0–100%)
 - If battery is above your limit, click **Discharge** to drain naturally to the target
 
 ## 🏗 Architecture
